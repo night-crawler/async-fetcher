@@ -1,4 +1,5 @@
 import asyncio
+import os
 import aiohttp
 import json
 import time
@@ -9,21 +10,41 @@ from aiohttp.client_exceptions import ClientOSError, TimeoutError
 from furl import furl
 from collections import OrderedDict, namedtuple
 
-from rest_framework.exceptions import APIException
-from rest_framework.renderers import JSONRenderer
-from django.conf import settings
-from django.utils import translation
-from django.utils.translation import ugettext_lazy as _
+# try to use drf encoder first
+try:
+    from rest_framework.utils.encoders import JSONEncoder
+except ImportError:
+    from json import JSONEncoder
 
+# suppose drf is installed
+try:
+    from rest_framework.exceptions import APIException
+except ImportError:
+    class APIException(Exception):
+        pass
+
+try:
+    from django.utils.translation import ugettext_lazy as _
+except ImportError:
+    def _(raw_str: str):
+        return raw_str
+
+try:
+    from django.conf import settings
+    DEV_SKIP_RETRIES = settings.DEBUG
+except ImportError:
+    DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
+
+
+from async_fetcher.utils import TCPConnectorMixIn
 
 FetchResult = namedtuple('FetchResult', ['headers', 'result', 'status'])
 
 
-def get_or_create_event_loop():  # -> asyncio.BaseEventLoop:
-    """
-    Возвращает уже существующий, либо создаёт и возвращает новый объект цикла событий asyncio.
-    :return: event_loop object.
-    """
+dict_or_none = t.Union[t.Dict, None]
+
+
+def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]:
     try:
         loop = asyncio.get_event_loop()
         return loop
@@ -33,15 +54,17 @@ def get_or_create_event_loop():  # -> asyncio.BaseEventLoop:
         return loop
 
 
-class AsyncFetch:
-    """
-    Класс инкапсулирующий работу по асинхронному выполнению HTTP запросов.
-    """
+class AsyncFetch(TCPConnectorMixIn):
+    CONNECTION_ERROR_TEMPLATE = _('Failed to connect `{0}` service. Original exception: `{1}`.')
+    RECEIVE_ERROR_TEMPLATE = _('Failed to receive data from `{0}` service. Original exception: `{1}`.')
 
     def __init__(self,
                  task_map: dict, timeout: int=10, num_retries: int=0,
-                 retry_timeout: float=1,
-                 service_name: str=None):
+                 retry_timeout: float=1.0,
+                 service_name: str='api',
+                 cafile: str=None,
+                 loop: t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop, None] = None,
+                 tcp_connector: t.Union[aiohttp.TCPConnector, None]=None):
         """
         Инициализация экземпляра класса.
         :param task_map: dict, пул задач
@@ -57,22 +80,38 @@ class AsyncFetch:
         self.retry_timeout = retry_timeout
         self.service_name = service_name
 
+        self.cafile = cafile
+        self.loop = loop or get_or_create_event_loop()
+        self._tcp_connector = tcp_connector
+        self._connector_owner = not bool(tcp_connector)
+
     @staticmethod
-    def mk_task(url: str, api_key: str=None, data=None, method: str=None,
-                headers: dict=None, response_type: str='json', language: str=None, timeout: float=None,
-                include_log_data: bool=True, query_params: dict=None, do_not_wait: bool=False) -> dict:
+    def mk_task(url: str,
+                method: str = 'get',
+                data=None,
+                headers: dict_or_none = None,
+                api_key: str= '',
+
+                response_type: str='json',
+                language_code: str=None,
+                timeout: float=None,
+                query: dict_or_none=None,
+                do_not_wait: bool=False,
+                json_encoder: JSONEncoder=JSONEncoder,
+                autodetect_content_type: bool=True) -> dict:
         """
-        Создаёт и возвращает задачу для выполнения как словарь.
-        :param url: str, url адрес
-        :param api_key: str, ключ апи для получения досупа к ресурсу
-        :param data: dict, данные для передачи
+        Creates task bundle dict with all request-specific necessary information.
+        :param autodetect_content_type:
+        :param json_encoder:
+        :param url: str, url address
+        :param api_key: str, optional API key in HEADERS
+        :param data: dict, optional data
         :param method: str, метод запроса HTTP
-        :param headers: dict, заголовки HTTP
+        :param headers: dict, optional HTTP headers
         :param response_type: str, тип ответа HTTP
-        :param language: str, значение для accept-language
-        :param timeout: float, сколько секунд ждать ответ перед TimeoutError
-        :param include_log_data: bool, писать ли в заголовках request.uuid и request.sequence
-        :param query_params: dict, словарь GET-аргументов для url
+        :param language_code: str, add accept-language header
+        :param timeout: float, time to wait for response, or TimeoutError
+        :param query: dict, url get arguments
         :param do_not_wait: bool, ожидать ответа или отдавать пустой результат после минимального таймаута
         :return: task as a dict, атрибуты задачи словарём
 
@@ -86,33 +125,29 @@ class AsyncFetch:
             'response_type': 'json'
         }
         """
-        if query_params:
-            url = furl(url).set(query_params).url
+        if query:
+            url = furl(url).set(query).url
 
-        language = language or translation.get_language()
         headers = headers or {}
-        if 'content-type' not in headers:  # присваиваем значение только если `content-type` не был определён
+
+        # присваиваем значение только если `content-type` не был определён
+        if autodetect_content_type and 'content-type' not in headers:
             if isinstance(data, dict):
                 headers['content-type'] = 'application/json'
-                data = json.dumps(data, cls=JSONRenderer.encoder_class)
             elif isinstance(data, str):
                 headers['content-type'] = 'text/html'
+
+        if data and not isinstance(data, (bytes, str)):
+            data = json.dumps(data, cls=json_encoder)
 
         if api_key:
             headers['api-key'] = api_key
 
-        if language:
-            headers['accept-language'] = language
-
-        if include_log_data:
-            r = get_current_request()
-            if hasattr(r, 'uuid'):
-                headers['log-uuid'] = str(r.uuid)
-            if hasattr(r, 'sequence'):
-                headers['log-sequence'] = r.increment_sequence()
+        if language_code:
+            headers['accept-language'] = language_code
 
         bundle = {
-            'method': method or 'get',
+            'method': method,
             'url': url,
             'data': data or {},
             'headers': headers,
@@ -121,6 +156,12 @@ class AsyncFetch:
             'do_not_wait': do_not_wait,
         }
         return bundle
+
+    def get_client_session(self) -> aiohttp.ClientSession:
+        return aiohttp.ClientSession(
+            connector=self.get_tcp_connector(),
+            connector_owner=self._connector_owner
+        )
 
     @asyncio.coroutine
     def fetch(self, session: aiohttp.ClientSession, bundle: dict) -> FetchResult:
@@ -164,17 +205,17 @@ class AsyncFetch:
         af_obj.go() -> OrderedDict([('profile', {'status': 200, 'result': {some data}}), ...])
         """
         try:
-            with aiohttp.ClientSession(loop=self.loop) as session:
+            with self.get_client_session() as session:
                 tasks = [self.fetch(session, bundle) for bundle in self.task_map.values()]
                 res = self.loop.run_until_complete(asyncio.gather(*tasks))
                 return OrderedDict(zip(self.task_map.keys(), res))
         except (ClientOSError, TimeoutError) as e:
             # если есть лимит попыток в релизе, пробуем запустить ещё раз
-            if self.num_retries > 0 and not settings.DEBUG:
+            if self.num_retries > 0 and not DEV_SKIP_RETRIES:
                 self.num_retries -= 1
                 time.sleep(self.retry_timeout)
                 return self.go()
             else:
-                raise APIException(_('Failed to connect %s service.' % self.service_name or 'api'))
+                raise APIException(str(self.CONNECTION_ERROR_TEMPLATE).format(self.service_name, str(e)))
         except ValueError as e:
-            raise APIException(_('Failed to receive data from %s service.' % self.service_name or 'api'))
+            raise APIException(str(self.RECEIVE_ERROR_TEMPLATE).format(self.service_name, str(e)))
