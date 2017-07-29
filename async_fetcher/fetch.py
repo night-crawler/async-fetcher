@@ -93,9 +93,12 @@ class AsyncFetch(TCPConnectorMixIn):
                 do_not_wait: bool = False,
                 json_encoder: JSONEncoder = JSONEncoder,
                 num_retries: int=-1,
+                fail_silently: bool=False,
                 autodetect_content_type: bool = True) -> dict:
         """
         Creates task bundle dict with all request-specific necessary information.
+        :param fail_silently: bool, do not raise exceptions, default is False;
+            for test purpose, do not use in production
         :param num_retries: int, *optional*, default is -1; -1 - no retries; 0 - use AsyncFetch.num_retries
         :param autodetect_content_type: if no `content-type` header was specified, set `content-type` as
             `application/json` for dict, and `text/html` otherwise; default is True
@@ -154,7 +157,8 @@ class AsyncFetch(TCPConnectorMixIn):
             'response_type': response_type,
             'timeout': timeout,
             'do_not_wait': do_not_wait,
-            'num_retries': num_retries
+            'num_retries': num_retries,
+            'fail_silently': fail_silently,
         }
         return bundle
 
@@ -177,9 +181,13 @@ class AsyncFetch(TCPConnectorMixIn):
         response_type = aio_bundle.pop('response_type')
         timeout = aio_bundle.pop('timeout') or self.timeout
         do_not_wait = aio_bundle.pop('do_not_wait')
+        fail_silently = aio_bundle.pop('fail_silently')
 
         # use num_retries from task bundle or AsyncFetcher.max_retries by default
-        num_retries = aio_bundle.pop('num_retries', self.max_retries)
+        num_retries = aio_bundle.pop('num_retries')
+        if num_retries < 0:
+            num_retries = self.max_retries
+
         if num_retries <= 1:  # whe have to perform request once at least
             num_retries = 1
 
@@ -226,6 +234,9 @@ class AsyncFetch(TCPConnectorMixIn):
                 yield from asyncio.sleep(self.retry_timeout)
 
         # reraise last exception (timeout or network error)
+        if fail_silently:
+            return FetchResult(result=None, headers=None, status=0)
+
         raise last_exception
 
     def go(self) -> OrderedDict:

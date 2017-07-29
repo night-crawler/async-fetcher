@@ -27,14 +27,14 @@ class FetcherTest:
         assert tm == {
             'url': url, 'method': 'get', 'response_type': 'json', 'data': {},
             'timeout': None, 'do_not_wait': False, 'headers': {},
-            'num_retries': -1
+            'num_retries': -1, 'fail_silently': False
         }
 
         tm = AsyncFetch.mk_task(url, data={'test': 1}, method='post', headers={'X-LOL': 1})
         assert tm == {
             'url': url, 'data': '{"test": 1}', 'headers': {'X-LOL': 1, 'content-type': 'application/json'},
             'timeout': None, 'response_type': 'json', 'do_not_wait': False, 'method': 'post',
-            'num_retries': -1
+            'num_retries': -1, 'fail_silently': False
         }
 
     def test_fetch(self):
@@ -123,3 +123,12 @@ class FetcherTest:
             with af.get_client_session() as session:
                 task = af.fetch(session, task_bundle)
                 response = af.loop.run_until_complete(task)
+
+    def test_retry_only_one_url(self):
+        task_map = {
+            0: AsyncFetch.mk_task(build_url('sleep', '1')),
+            1: AsyncFetch.mk_task(build_url('502'), fail_silently=True)
+        }
+        af = AsyncFetch(task_map, num_retries=10, retry_timeout=0.2)
+        res = af.go()
+        assert res[1] == FetchResult(None, None, 0)
