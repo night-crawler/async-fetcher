@@ -22,8 +22,8 @@ except ImportError:  # django package is not installed
 
 try:
     from rest_framework.exceptions import APIException
-except (ImportError, Exception) as e:  # django.core.exceptions.ImproperlyConfigured
-    if e.__class__.__name__ in ('ImproperlyConfigured', ImportError):
+except Exception as e:  # django.core.exceptions.ImproperlyConfigured
+    if e.__class__.__name__ in ('ImproperlyConfigured','ImportError'):
         class APIException(Exception):
             default_detail = _('API error occurred.')
             default_code = 'error'

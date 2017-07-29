@@ -1,34 +1,37 @@
 import asyncio
-import os
-import aiohttp
 import json
-import time
-
+import os
 import typing as t
+import aiohttp
+
+from collections import OrderedDict, namedtuple
+from furl import furl
 
 from aiohttp.client_exceptions import ClientOSError, TimeoutError
-from furl import furl
-from collections import OrderedDict, namedtuple
 
 from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
+from async_fetcher.utils import TCPConnectorMixIn
 
 # try to use drf encoder first
 try:
     from rest_framework.utils.encoders import JSONEncoder
-except (ImportError, Exception):  # django.core.exceptions.ImproperlyConfigured
-    from json import JSONEncoder
+except Exception as e:  # ImportError, django.core.exceptions.ImproperlyConfigured
+    if e.__class__.__name__ in ['ImportError', 'ImproperlyConfigured']:
+        from json import JSONEncoder
+    else:
+        raise
 
 try:
     from django.conf import settings
+
     DEV_SKIP_RETRIES = settings.DEBUG
-except (ImportError, Exception):  # django.core.exceptions.ImproperlyConfigured
-    DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
-
-
-from async_fetcher.utils import TCPConnectorMixIn
+except Exception as e:  # ImportError, django.core.exceptions.ImproperlyConfigured
+    if e.__class__.__name__ in ['ImportError', 'ImproperlyConfigured']:
+        DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
+    else:
+        raise
 
 FetchResult = namedtuple('FetchResult', ['headers', 'result', 'status'])
-
 
 dict_or_none = t.Union[t.Dict, None]
 str_or_none = t.Union[str, None]
@@ -46,15 +49,14 @@ def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.Abstrac
 
 
 class AsyncFetch(TCPConnectorMixIn):
-
     def __init__(self,
-                 task_map: dict, timeout: int=10, num_retries: int=0,
-                 retry_timeout: float=1.0,
-                 service_name: str='api',
-                 cafile: str=None,
+                 task_map: dict, timeout: int = 10, num_retries: int = 0,
+                 retry_timeout: float = 1.0,
+                 service_name: str = 'api',
+                 cafile: str = None,
                  loop: t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop, None] = None,
-                 tcp_connector: t.Union[aiohttp.TCPConnector, None]=None,
-                 keepalive_timeout: int=60):
+                 tcp_connector: t.Union[aiohttp.TCPConnector, None] = None,
+                 keepalive_timeout: int = 60):
         """
         :param task_map: dict, task bundle mapping like {'task_name': <task_bundle>}
         :param timeout: int, request timeout
@@ -84,7 +86,7 @@ class AsyncFetch(TCPConnectorMixIn):
                 method: str = 'get',
                 data: t.Any = None,  # JSON serializable value
                 headers: dict_or_none = None,
-                api_key: str_or_none= '',
+                api_key: str_or_none = '',
 
                 response_type: str = 'json',
                 language_code: str_or_none = None,
@@ -92,8 +94,8 @@ class AsyncFetch(TCPConnectorMixIn):
                 query: dict_or_none = None,
                 do_not_wait: bool = False,
                 json_encoder: JSONEncoder = JSONEncoder,
-                num_retries: int=-1,
-                fail_silently: bool=False,
+                num_retries: int = -1,
+                fail_silently: bool = False,
                 autodetect_content_type: bool = True) -> dict:
         """
         Creates task bundle dict with all request-specific necessary information.

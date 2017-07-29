@@ -1,8 +1,5 @@
-import aiohttp
 import ssl
-import typing as t
-
-bytes_or_str = t.Union[str, bytes]
+import aiohttp
 
 
 class TCPConnectorMixIn:

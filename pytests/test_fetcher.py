@@ -8,11 +8,6 @@ from async_fetcher.fetch import AsyncFetch, FetchResult
 TEST_SERVER_URL = 'http://127.0.0.1:21571'
 
 
-@pytest.fixture(scope='module')
-def system_instance():
-    pass
-
-
 def build_url(*path_parts: str) -> str:
     return os.path.join(TEST_SERVER_URL, *path_parts)
 
