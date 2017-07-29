@@ -10,29 +10,18 @@ from aiohttp.client_exceptions import ClientOSError, TimeoutError
 from furl import furl
 from collections import OrderedDict, namedtuple
 
+from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
+
 # try to use drf encoder first
 try:
     from rest_framework.utils.encoders import JSONEncoder
-except ImportError:
+except (ImportError, Exception):  # django.core.exceptions.ImproperlyConfigured
     from json import JSONEncoder
-
-# suppose drf is installed
-try:
-    from rest_framework.exceptions import APIException
-except ImportError:
-    class APIException(Exception):
-        pass
-
-try:
-    from django.utils.translation import ugettext_lazy as _
-except ImportError:
-    def _(raw_str: str):
-        return raw_str
 
 try:
     from django.conf import settings
     DEV_SKIP_RETRIES = settings.DEBUG
-except ImportError:
+except (ImportError, Exception):  # django.core.exceptions.ImproperlyConfigured
     DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
 
 
@@ -42,6 +31,8 @@ FetchResult = namedtuple('FetchResult', ['headers', 'result', 'status'])
 
 
 dict_or_none = t.Union[t.Dict, None]
+str_or_none = t.Union[str, None]
+float_or_none = t.Union[float, None]
 
 
 def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]:
@@ -55,8 +46,6 @@ def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.Abstrac
 
 
 class AsyncFetch(TCPConnectorMixIn):
-    CONNECTION_ERROR_TEMPLATE = _('Failed to connect `{0}` service. Original exception: `{1}`.')
-    RECEIVE_ERROR_TEMPLATE = _('Failed to receive data from `{0}` service. Original exception: `{1}`.')
 
     def __init__(self,
                  task_map: dict, timeout: int=10, num_retries: int=0,
@@ -64,19 +53,21 @@ class AsyncFetch(TCPConnectorMixIn):
                  service_name: str='api',
                  cafile: str=None,
                  loop: t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop, None] = None,
-                 tcp_connector: t.Union[aiohttp.TCPConnector, None]=None):
+                 tcp_connector: t.Union[aiohttp.TCPConnector, None]=None,
+                 keepalive_timeout: int=60):
         """
-        Инициализация экземпляра класса.
-        :param task_map: dict, пул задач
-        :param timeout: int, время ожидания
-        :param num_retries: int, кол-во попыток сделать запрос к API после таймаута
-        :param retry_timeout: float, число секунд перед попыткой отправить заново
-        :param service_name: str, отображаемая метка сервиса в случае ошибки
+        :param task_map: dict, task bundle mapping like {'task_name': <task_bundle>}
+        :param timeout: int, request timeout
+        :param num_retries: int, max retry count before exception rising
+        :param retry_timeout: float, wait before retry
+        :param service_name: str, service name label for verbose logging
+        :param keepalive_timeout: int, keepalive timeout for TCPConnector created __internally__
         """
         self.task_map = OrderedDict(task_map.items())
         self.loop = get_or_create_event_loop()
         self.timeout = timeout
         self.num_retries = num_retries
+        self.max_retries = num_retries
         self.retry_timeout = retry_timeout
         self.service_name = service_name
 
@@ -85,35 +76,44 @@ class AsyncFetch(TCPConnectorMixIn):
         self._tcp_connector = tcp_connector
         self._connector_owner = not bool(tcp_connector)
 
+        # keepalive_timeout for __internally__ created connector
+        self.keepalive_timeout = keepalive_timeout
+
     @staticmethod
     def mk_task(url: str,
                 method: str = 'get',
-                data=None,
+                data: t.Any = None,  # JSON serializable value
                 headers: dict_or_none = None,
-                api_key: str= '',
+                api_key: str_or_none= '',
 
-                response_type: str='json',
-                language_code: str=None,
-                timeout: float=None,
-                query: dict_or_none=None,
-                do_not_wait: bool=False,
-                json_encoder: JSONEncoder=JSONEncoder,
-                autodetect_content_type: bool=True) -> dict:
+                response_type: str = 'json',
+                language_code: str_or_none = None,
+                timeout: float_or_none = None,
+                query: dict_or_none = None,
+                do_not_wait: bool = False,
+                json_encoder: JSONEncoder = JSONEncoder,
+                num_retries: int=-1,
+                autodetect_content_type: bool = True) -> dict:
         """
         Creates task bundle dict with all request-specific necessary information.
-        :param autodetect_content_type:
-        :param json_encoder:
-        :param url: str, url address
-        :param api_key: str, optional API key in HEADERS
-        :param data: dict, optional data
-        :param method: str, метод запроса HTTP
-        :param headers: dict, optional HTTP headers
-        :param response_type: str, тип ответа HTTP
-        :param language_code: str, add accept-language header
-        :param timeout: float, time to wait for response, or TimeoutError
-        :param query: dict, url get arguments
-        :param do_not_wait: bool, ожидать ответа или отдавать пустой результат после минимального таймаута
-        :return: task as a dict, атрибуты задачи словарём
+        :param num_retries: int, *optional*, default is -1; -1 - no retries; 0 - use AsyncFetch.num_retries
+        :param autodetect_content_type: if no `content-type` header was specified, set `content-type` as
+            `application/json` for dict, and `text/html` otherwise; default is True
+        :param json_encoder: JSONEncoder, *optional*, JSON encoder for data serialization
+            tries to use DRF's encoder, or default JSONEncoder from json package; default is JSONEncoder
+        :param url: str, *required*, url address
+        :param api_key: str, optional API key passed into HEADERS dict
+        :param data: dict, *optional*, request data. Default is None,
+        :param method: str, *optional*, HTTP request method. Default is True.
+        :param headers: dict, *optional*, optional HTTP headers
+        :param response_type: str, *optional*, HTTP response type
+            (in fact it's just aiohttp's method name, i.e. text, or json); default is 'json'
+        :param language_code: str, set `accept-language` header
+        :param timeout: float, *optional*, time to wait for response in seconds before TimeoutError
+        :param query: dict, *optional*, url get arguments
+        :param do_not_wait: bool, *optional*, fail silently with no retries and empty resultset
+
+        :return: dict, task bundle
 
         AsyncFetch.mk_task('http://cas/msa/cas/v1/users/user/', api_key='key', data={},  method='get',
                            headers={'content-type': 'application/json'}, response_type='json') ->
@@ -130,7 +130,7 @@ class AsyncFetch(TCPConnectorMixIn):
 
         headers = headers or {}
 
-        # присваиваем значение только если `content-type` не был определён
+        # if no content-type specified and autodetect flag was set
         if autodetect_content_type and 'content-type' not in headers:
             if isinstance(data, dict):
                 headers['content-type'] = 'application/json'
@@ -154,6 +154,7 @@ class AsyncFetch(TCPConnectorMixIn):
             'response_type': response_type,
             'timeout': timeout,
             'do_not_wait': do_not_wait,
+            'num_retries': num_retries
         }
         return bundle
 
@@ -166,11 +167,10 @@ class AsyncFetch(TCPConnectorMixIn):
     @asyncio.coroutine
     def fetch(self, session: aiohttp.ClientSession, bundle: dict) -> FetchResult:
         """
-        Асинхронно выполняет работу по выполнению HTTP запроса и возвращает его результат.
-        Сoroutine task.
-        :param session: obj of aiohttp.ClientSession, контекст (интерфейс) для работы с HTTP запросами
-        :param bundle: dict, данные для выполнения запроса
-        :return: FetchResult, namedtuple с результатом, заголовками и статусом запроса.
+        Runs HTTP request asynchronously. Coroutine task.
+        :param session: instance of aiohttp.ClientSession
+        :param bundle: dict, `AsyncFetch.mk_task()` return dict
+        :return: FetchResult, resulting namedtuple with response headers, content and status.
         """
         aio_bundle = bundle.copy()
         method, url = aio_bundle.pop('method', 'get'), aio_bundle.pop('url')
@@ -178,44 +178,66 @@ class AsyncFetch(TCPConnectorMixIn):
         timeout = aio_bundle.pop('timeout') or self.timeout
         do_not_wait = aio_bundle.pop('do_not_wait')
 
-        with aiohttp.Timeout(timeout):
-            response = yield from session.request(method, url, **aio_bundle)
-            if do_not_wait:
-                yield from response.release()
-                return FetchResult(result=None, headers=None, status=0)
+        # use num_retries from task bundle or AsyncFetcher.max_retries by default
+        num_retries = aio_bundle.pop('num_retries', self.max_retries)
+        if num_retries <= 1:  # whe have to perform request once at least
+            num_retries = 1
 
-            if response.status == 502:
-                yield from response.release()
-                raise TimeoutError
+        max_retries = num_retries
+        # save last exception for verbose logging
+        last_exception = None
 
-            # if response_type == 'json' and response_type not in response.content_type:
-            #     yield from response.release()
-            #     res = None
-            # else:
-            gen = getattr(response, response_type)()
-            res = yield from gen
-            return FetchResult(result=res, headers=response.headers, status=response.status)
+        while num_retries > 0:
+            num_retries -= 1
+
+            try:  # catch TimeoutError and AsyncFetchNetworkError
+                with aiohttp.Timeout(timeout):
+                    response = yield from session.request(method, url, **aio_bundle)
+                    if do_not_wait:  # satisfied with any emptiness
+                        yield from response.release()
+                        return FetchResult(result=None, headers=None, status=0)
+
+                    # catch all network timeout status codes and retry
+                    if response.status in [524, 504, 502, 408]:
+                        yield from response.release()
+                        raise AsyncFetchNetworkError(
+                            service_name=self.service_name, url=url,
+                            response_code=response.status, code=response.status,
+                            retries_left=num_retries, max_retries=max_retries
+                        )
+
+                    # TODO: in case of wrong content-type specified workaround
+                    if response_type == 'json' and response_type not in response.content_type.lower():
+                        gen = getattr(response, 'text')()
+                    else:
+                        gen = getattr(response, response_type)()
+
+                    res = yield from gen
+                    return FetchResult(result=res, headers=response.headers, status=response.status)
+
+            except (TimeoutError, AsyncFetchNetworkError, ClientOSError) as e:
+                last_exception = e
+                if not isinstance(last_exception, AsyncFetchNetworkError):
+                    last_exception = AsyncFetchNetworkError(
+                        service_name=self.service_name, url=url, original_exception=e,
+                        retries_left=num_retries, max_retries=max_retries,
+                        response_code=0  # no response code for TimeoutError or ClientOSError
+                    )
+                yield from asyncio.sleep(self.retry_timeout)
+
+        # reraise last exception (timeout or network error)
+        raise last_exception
 
     def go(self) -> OrderedDict:
         """
-        Асинхронно выполняет задачи из пула задач.
-        :return: OrderedDict of HTTP Response,
-        отсортированный словарь где ключи - названия задач и значения - результаты выполнения запросов.
-
-        af_obj.go() -> OrderedDict([('profile', {'status': 200, 'result': {some data}}), ...])
+        Executes stored task_map asynchronously.
+        :return: HTTP Response OrderedDict
+            af_obj.go() -> OrderedDict([('profile', {'status': 200, 'result': {some data}}), ...])
         """
         try:
             with self.get_client_session() as session:
                 tasks = [self.fetch(session, bundle) for bundle in self.task_map.values()]
                 res = self.loop.run_until_complete(asyncio.gather(*tasks))
                 return OrderedDict(zip(self.task_map.keys(), res))
-        except (ClientOSError, TimeoutError) as e:
-            # если есть лимит попыток в релизе, пробуем запустить ещё раз
-            if self.num_retries > 0 and not DEV_SKIP_RETRIES:
-                self.num_retries -= 1
-                time.sleep(self.retry_timeout)
-                return self.go()
-            else:
-                raise APIException(str(self.CONNECTION_ERROR_TEMPLATE).format(self.service_name, str(e)))
         except ValueError as e:
-            raise APIException(str(self.RECEIVE_ERROR_TEMPLATE).format(self.service_name, str(e)))
+            raise AsyncFetchReceiveError(service_name=self.service_name, original_exception=e)

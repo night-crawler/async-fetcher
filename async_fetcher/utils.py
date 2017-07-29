@@ -15,13 +15,22 @@ class TCPConnectorMixIn:
             # create ssl context if no valid connector is present
             ssl_context = ssl.create_default_context(cafile=self.cafile)
 
-            # memoize tcp_connector
-            self._tcp_connector = aiohttp.TCPConnector(loop=self.loop, ssl_context=ssl_context, keepalive_timeout=60)
+            # memoize tcp_connector for reuse
+            # noinspection PyAttributeOutsideInit
+            self._tcp_connector = aiohttp.TCPConnector(
+                loop=self.loop,
+                ssl_context=ssl_context,
+                keepalive_timeout=self.keepalive_timeout,
+            )
             return self._tcp_connector
 
         return self._tcp_connector
 
     def __del__(self):
+        """
+        Properly close owned connector on exit
+        :return:
+        """
         if self._connector_owner:
             connector = self.get_tcp_connector()
             not connector.closed and connector.close()
