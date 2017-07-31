@@ -117,7 +117,7 @@ class FetcherTest:
         with pytest.raises(AsyncFetchNetworkError):
             with af.get_client_session() as session:
                 task = af.fetch(session, task_bundle)
-                response = af.loop.run_until_complete(task)
+                af.loop.run_until_complete(task)
 
     def test_retry_only_one_url(self):
         task_map = {

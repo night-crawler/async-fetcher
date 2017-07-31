@@ -23,7 +23,7 @@ async def request_info(request: Request):
     try:
         encoding = request.charset or 'utf-8'
         t_content = b_content.decode(encoding)
-    except:
+    except UnicodeDecodeError:
         t_content = None
 
     if t_content is None:
@@ -31,7 +31,7 @@ async def request_info(request: Request):
     else:
         try:
             content = json.loads(t_content)
-        except:
+        except json.JSONDecodeError:
             content = t_content
 
     bundle['content'] = content
@@ -52,7 +52,7 @@ async def view502(request: Request):
     return web.Response(text=message, status=502)
 
 
-if __name__ == '__main__':
+def run_server():
     app = web.Application()
     app.router.add_get('/', home)
     app.router.add_route('*', '/request-info', request_info)
@@ -62,3 +62,7 @@ if __name__ == '__main__':
     sleep_time_resource.add_route('*', sleep_time)
 
     web.run_app(app, port=21571)
+
+
+if __name__ == '__main__':
+    run_server()

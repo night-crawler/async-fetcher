@@ -1,9 +1,24 @@
 import ssl
 import aiohttp
+import asyncio
+
+import typing as t
 
 
+def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]:
+    try:
+        loop = asyncio.get_event_loop()
+        return loop
+    except (RuntimeError, AssertionError):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
+
+# noinspection PyUnresolvedReferences
 class TCPConnectorMixIn:
 
+    # noinspection PyUnresolvedReferences
     def get_tcp_connector(self) -> aiohttp.TCPConnector:
         if self._connector_owner:
             # return valid connector

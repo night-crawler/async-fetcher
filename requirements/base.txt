@@ -1,0 +1,5 @@
+bumpversion
+pytest
+django
+djangorestframework
+furl
