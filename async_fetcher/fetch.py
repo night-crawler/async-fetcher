@@ -141,11 +141,11 @@ class AsyncFetch(TCPConnectorMixIn):
             headers['accept-language'] = language_code
 
         bundle = {
-            'method': method,
+            'method': method.lower(),
             'url': url,
             'data': data or {},
             'headers': headers,
-            'response_type': response_type,
+            'response_type': response_type.lower(),
             'timeout': timeout,
             'do_not_wait': do_not_wait,
             'num_retries': num_retries,
