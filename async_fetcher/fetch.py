@@ -8,6 +8,7 @@ from collections import OrderedDict, namedtuple
 from furl import furl
 
 from aiohttp.client_exceptions import ClientOSError, TimeoutError
+from aiohttp.formdata import FormData
 
 from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
 from async_fetcher.utils import TCPConnectorMixIn, get_or_create_event_loop
@@ -131,7 +132,8 @@ class AsyncFetch(TCPConnectorMixIn):
             elif isinstance(data, str):
                 headers['content-type'] = 'text/html'
 
-        if data and not isinstance(data, (bytes, str)):
+        # Do not serialize FormData instances
+        if data and not isinstance(data, (bytes, str, FormData)):
             data = json.dumps(data, cls=json_encoder)
 
         if api_key:
