@@ -2,10 +2,14 @@ import ssl
 import aiohttp
 import asyncio
 
-import typing as t
+
+# if sys.version_info >= (3, 5):
+#     EventLoopType = t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]
+# else:
+#     EventLoopType = asyncio.AbstractEventLoop
 
 
-def get_or_create_event_loop() -> t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]:
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
     try:
         loop = asyncio.get_event_loop()
         return loop
