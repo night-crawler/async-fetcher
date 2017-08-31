@@ -1,23 +1,15 @@
 import typing as t
+import os
 
 
 def fake_ugettext_lazy(raw_str: str):
     return raw_str
 
 
-try:
+# check if we have an active django environment (not just installed django package)
+if os.getenv('DJANGO_SETTINGS_MODULE'):
     from django.utils.translation import ugettext_lazy as _
-
-    try:
-        str(_('check'))
-    except Exception as e:
-        # cannot import `django.core.exceptions.ImproperlyConfigured` since django is not configured. LOL.
-        # if django package on path, but no `DJANGO_SETTINGS_MODULE` specified
-        if e.__class__.__name__ == 'ImproperlyConfigured':
-            _ = fake_ugettext_lazy
-        else:
-            raise
-except ImportError:  # django package is not installed
+else:  # django package is not installed
     _ = fake_ugettext_lazy
 
 try:
