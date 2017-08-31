@@ -7,6 +7,7 @@ def fake_ugettext_lazy(raw_str: str):
 
 try:
     from django.utils.translation import ugettext_lazy as _
+
     try:
         str(_('check'))
     except Exception as e:
@@ -18,7 +19,6 @@ try:
             raise
 except ImportError:  # django package is not installed
     _ = fake_ugettext_lazy
-
 
 try:
     from rest_framework.exceptions import APIException
@@ -39,23 +39,22 @@ except Exception as e:  # django.core.exceptions.ImproperlyConfigured
 
 
 class AsyncFetchError(APIException):
-    pass
+    def get_template(self):
+        raise NotImplementedError()
 
 
 class AsyncFetchReceiveError(AsyncFetchError):
-    TEMPLATE = _('Failed to receive data from `{0}` service. Original exception: `{1}`.')
-
     def __init__(self, detail=None, code=None,
                  service_name: str = '',
                  original_exception: t.Union[Exception, None] = None):
         self.original_exception = original_exception
-        self.detail = str(self.TEMPLATE.format(service_name, str(original_exception)))
+        self.detail = str(self.get_template().format(service_name, str(original_exception)))
+
+    def get_template(self):
+        return _('Failed to receive data from `{0}` service. Original exception: `{1}`.')
 
 
 class AsyncFetchNetworkError(AsyncFetchError):
-    TEMPLATE = _('Network issue while requesting `{0}` service data from url `{1}` [{2} of {3} left]. '
-                 'Last response code: {4}. Original exception: `{5}`.')
-
     def __init__(self, detail=None, code=None,
                  service_name: str = '',
                  url: str = '',
@@ -70,7 +69,7 @@ class AsyncFetchNetworkError(AsyncFetchError):
         self.max_retries = max_retries
         self.response_code = response_code
 
-        self.detail = str(self.TEMPLATE.format(
+        self.detail = str(self.get_template().format(
             str(service_name),
             str(url),
             str(retries_left),
@@ -78,3 +77,7 @@ class AsyncFetchNetworkError(AsyncFetchError):
             str(response_code),
             str(original_exception) or type(original_exception)
         ))
+
+    def get_template(self):
+        return _('Network issue while requesting `{0}` service data from url `{1}` [{2} of {3} left]. '
+                 'Last response code: {4}. Original exception: `{5}`.')
