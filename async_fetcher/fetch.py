@@ -45,7 +45,7 @@ class AsyncFetch(TCPConnectorMixIn):
                  retry_timeout: float = 1.0,
                  service_name: str = 'api',
                  cafile: str = None,
-                 loop: t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop, None] = None,
+                 loop: t.Optional[asyncio.AbstractEventLoop] = None,
                  tcp_connector: t.Union[aiohttp.TCPConnector, None] = None,
                  keepalive_timeout: int = 60):
         """
