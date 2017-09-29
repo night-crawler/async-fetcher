@@ -11,6 +11,7 @@ from aiohttp.client_exceptions import ClientOSError, TimeoutError
 from aiohttp.formdata import FormData
 
 from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
+from async_fetcher.fetch_result import FetchResult
 from async_fetcher.utils import TCPConnectorMixIn, get_or_create_event_loop
 
 # try to use drf encoder first
@@ -31,8 +32,6 @@ except Exception as _e:  # ImportError, django.core.exceptions.ImproperlyConfigu
         DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
     else:
         raise
-
-FetchResult = namedtuple('FetchResult', ['headers', 'result', 'status'])
 
 dict_or_none = t.Union[t.Dict, None]
 str_or_none = t.Union[str, None]

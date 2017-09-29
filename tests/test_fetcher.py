@@ -5,6 +5,8 @@ import pytest
 from async_fetcher.exceptions import AsyncFetchNetworkError
 from async_fetcher.fetch import AsyncFetch, FetchResult
 
+pytestmark = pytest.mark.fetcher
+
 TEST_SERVER_URL = 'http://127.0.0.1:21571'
 
 
