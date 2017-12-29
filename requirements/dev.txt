@@ -3,3 +3,4 @@
 aiohttp  # like a test server
 bumpversion
 pytest
+pytest-cov
