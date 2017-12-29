@@ -1,3 +1,5 @@
-pytest
+-r base.txt
+
+aiohttp  # like a test server
 bumpversion
-pytest-cov
+pytest

@@ -10,6 +10,7 @@ try:
 except ImportError:  # aiohttp > 2.2.5
     from asyncio import TimeoutError
 
+pytestmark = pytest.mark.fetcher
 
 TEST_SERVER_URL = 'http://127.0.0.1:21571'
 
