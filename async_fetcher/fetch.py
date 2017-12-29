@@ -7,7 +7,13 @@ import aiohttp
 from collections import OrderedDict, namedtuple
 from furl import furl
 
-from aiohttp.client_exceptions import ClientOSError, TimeoutError
+from aiohttp.client_exceptions import ClientOSError
+
+try:
+    from aiohttp.client_exceptions import TimeoutError
+except ImportError:  # aiohttp > 2.2.5
+    from asyncio import TimeoutError
+
 from aiohttp.formdata import FormData
 
 from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
@@ -38,6 +44,9 @@ dict_or_none = t.Union[t.Dict, None]
 str_or_none = t.Union[str, None]
 float_or_none = t.Union[float, None]
 
+receive_error_class_type = t.Union[t.Type[AsyncFetchReceiveError], t.Type[Exception]]
+network_error_class_type = t.Union[t.Type[AsyncFetchNetworkError], t.Type[Exception]]
+
 
 class AsyncFetch(TCPConnectorMixIn):
     def __init__(self,
@@ -47,7 +56,9 @@ class AsyncFetch(TCPConnectorMixIn):
                  cafile: str = None,
                  loop: t.Optional[asyncio.AbstractEventLoop] = None,
                  tcp_connector: t.Union[aiohttp.TCPConnector, None] = None,
-                 keepalive_timeout: int = 60):
+                 keepalive_timeout: int = 60,
+                 receive_error_class: receive_error_class_type = AsyncFetchReceiveError,
+                 network_error_class: network_error_class_type = AsyncFetchNetworkError):
         """
         :param task_map: dict, task bundle mapping like {'task_name': <task_bundle>}
         :param timeout: int, request timeout
@@ -70,6 +81,9 @@ class AsyncFetch(TCPConnectorMixIn):
 
         # keepalive_timeout for __internally__ created connector
         self.keepalive_timeout = keepalive_timeout
+
+        self.receive_error_class = receive_error_class
+        self.network_error_class = network_error_class
 
     @staticmethod
     def mk_task(url: str,
@@ -201,7 +215,7 @@ class AsyncFetch(TCPConnectorMixIn):
                     # catch all network timeout status codes and retry
                     if response.status in [524, 504, 502, 408]:
                         yield from response.release()
-                        raise AsyncFetchNetworkError(
+                        raise self.network_error_class(
                             service_name=self.service_name, url=url,
                             response_code=response.status, code=response.status,
                             retries_left=num_retries, max_retries=max_retries
@@ -216,10 +230,10 @@ class AsyncFetch(TCPConnectorMixIn):
                     res = yield from gen
                     return FetchResult(result=res, headers=response.headers, status=response.status)
 
-            except (TimeoutError, AsyncFetchNetworkError, ClientOSError) as e:
+            except (TimeoutError, self.network_error_class, ClientOSError) as e:
                 last_exception = e
-                if not isinstance(last_exception, AsyncFetchNetworkError):
-                    last_exception = AsyncFetchNetworkError(
+                if not isinstance(last_exception, self.network_error_class):
+                    last_exception = self.network_error_class(
                         service_name=self.service_name, url=url, original_exception=e,
                         retries_left=num_retries, max_retries=max_retries,
                         response_code=0  # no response code for TimeoutError or ClientOSError
@@ -244,4 +258,4 @@ class AsyncFetch(TCPConnectorMixIn):
                 res = self.loop.run_until_complete(asyncio.gather(*tasks))
                 return OrderedDict(zip(self.task_map.keys(), res))
         except ValueError as e:
-            raise AsyncFetchReceiveError(service_name=self.service_name, original_exception=e)
+            raise self.receive_error_class(service_name=self.service_name, original_exception=e)

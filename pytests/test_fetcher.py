@@ -5,6 +5,12 @@ import pytest
 from async_fetcher.exceptions import AsyncFetchNetworkError
 from async_fetcher.fetch import AsyncFetch, FetchResult
 
+try:
+    from aiohttp.client_exceptions import TimeoutError
+except ImportError:  # aiohttp > 2.2.5
+    from asyncio import TimeoutError
+
+
 TEST_SERVER_URL = 'http://127.0.0.1:21571'
 
 
@@ -32,6 +38,21 @@ class FetcherTest:
             'num_retries': -1, 'fail_silently': False
         }
 
+    def test__mk_task__api_key_modifies_headers(self):
+        url = build_url('request-info')
+        tm = AsyncFetch.mk_task(url, api_key='api!key')
+        assert tm['headers'] == {'api-key': 'api!key'}
+
+    def test__mk_task__query_modifies_bundle_url(self):
+        url = build_url('request-info')
+        tm = AsyncFetch.mk_task(url, query={'key': True})
+        assert tm['url'] == 'http://127.0.0.1:21571/request-info?key=True'
+
+    def test__mk_task__language_code_modifies_headers(self):
+        url = build_url('request-info')
+        tm = AsyncFetch.mk_task(url, language_code='lol', headers={'X-LOL': 666})
+        assert tm['headers'] == {'X-LOL': 666, 'accept-language': 'lol'}
+
     def test_fetch(self):
         url = build_url('request-info')
         task_bundle = AsyncFetch.mk_task(url, data='lol')
@@ -44,6 +65,20 @@ class FetcherTest:
             assert type(response) == FetchResult
             assert response.status == 200
             assert response.result['content'] == 'lol'
+
+    def test_fetch__do_not_wait_flag_return_empty_response(self):
+        url = build_url('error_url')
+        task_bundle = AsyncFetch.mk_task(url, data='lol', do_not_wait=True)
+        af = AsyncFetch({})
+
+        with af.get_client_session() as session:
+            task = af.fetch(session, task_bundle)
+            response = af.loop.run_until_complete(task)
+
+            assert type(response) == FetchResult
+            assert response.status == 0
+            assert response.result is None
+            assert response.headers is None
 
     def test_go(self):
         af = AsyncFetch({
@@ -109,7 +144,7 @@ class FetcherTest:
         execution_time = f()
         assert execution_time < 2
 
-    def test_fetch_timeout_errors(self):
+    def test_fetch_raises_network_error(self):
         url = build_url('502')
         task_bundle = AsyncFetch.mk_task(url)
         af = AsyncFetch({}, num_retries=2, timeout=1, retry_timeout=1)
@@ -118,6 +153,19 @@ class FetcherTest:
             with af.get_client_session() as session:
                 task = af.fetch(session, task_bundle)
                 af.loop.run_until_complete(task)
+
+    def test_fetch_handles_timeout_error(self):
+        url = build_url('sleep', '10')
+        task_bundle = AsyncFetch.mk_task(url)
+        af = AsyncFetch({}, num_retries=1, timeout=1, retry_timeout=1)
+
+        try:
+            with af.get_client_session() as session:
+                task = af.fetch(session, task_bundle)
+                af.loop.run_until_complete(task)
+        except Exception as e:
+            assert isinstance(e, AsyncFetchNetworkError)
+            assert isinstance(e.original_exception, TimeoutError)
 
     def test_retry_only_one_url(self):
         task_map = {

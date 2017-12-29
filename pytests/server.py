@@ -40,7 +40,6 @@ async def request_info(request: Request):
 
 async def sleep_time(request: Request):
     st = float(request.match_info['sleep'])
-    print('sleeping', st)
     await asyncio.sleep(st)
     return web.json_response({'slept': st})
 
@@ -48,7 +47,6 @@ async def sleep_time(request: Request):
 # noinspection PyUnusedLocal
 async def view502(request: Request):
     message = 'GTFO. Gateway Took Fantastic Outing.'
-    print(message)
     return web.Response(text=message, status=502)
 
 

@@ -12,7 +12,7 @@ setup(
     license='MIT',
     author='night-crawler',
     author_email='lilo.panic@gmail.com',
-    description='Django Docker helpers',
+    description='aiohttp wrapper to handle multiple api calls at a time',
     long_description=long_description,
     classifiers=[
         'Environment :: Web Environment',

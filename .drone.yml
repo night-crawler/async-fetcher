@@ -1,0 +1,25 @@
+pipeline:
+  run-tests:
+    image: docker.force.fm/msa/python-test:3.6.4
+    commands:
+      - pip install -r requirements/dev.txt
+      # install outdated version of aiohttp
+      - pip install aiohttp==2.2.5
+      - pytest . --tb=line --cov=async_fetcher
+      # run tests with latest aiohttp version
+      - pip install aiohttp -U
+      - pytest . --tb=line --cov=async_fetcher
+      - python setup.py sdist bdist_wheel
+      - python setup.py install  # check setup.py is valid
+
+  notify-users-with-telegram:
+    image: appleboy/drone-telegram
+    when:
+      status: [ success, failure ]
+      event: [ push, tag, deployment, pull_request ]
+
+    secrets:
+      - source: telegram_api_token
+        target: telegram_token
+      - source: telegram_receivers
+        target: telegram_to
