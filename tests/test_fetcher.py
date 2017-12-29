@@ -78,7 +78,7 @@ class FetcherTest:
 
             assert type(response) == FetchResult
             assert response.status == 0
-            assert response.result is None
+            assert response.result == {}
             assert response.headers is None
 
     def test_go(self):
