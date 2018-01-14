@@ -1,7 +1,5 @@
 import typing as t
 
-from rest_framework import status as drf_status
-
 
 class FetchResult:
     """
@@ -34,19 +32,19 @@ class FetchResult:
                'jsonrpc' in self._result
 
     def is_success(self):
-        return drf_status.is_success(self.status)
+        return 200 <= self.status <= 299
 
     def is_client_error(self):
-        return drf_status.is_client_error(self.status)
+        return 400 <= self.status <= 499
 
     def is_informational(self):
-        return drf_status.is_informational(self.status)
+        return 100 <= self.status <= 199
 
     def is_redirect(self):
-        return drf_status.is_redirect(self.status)
+        return 300 <= self.status <= 399
 
     def is_server_error(self):
-        return drf_status.is_server_error(self.status)
+        return 500 <= self.status <= 599
 
     @property
     def status(self):

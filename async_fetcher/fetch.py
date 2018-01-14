@@ -18,13 +18,13 @@ from aiohttp.formdata import FormData
 
 from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
 from async_fetcher.fetch_result import FetchResult
-from async_fetcher.utils import TCPConnectorMixIn, get_or_create_event_loop
+from async_fetcher.utils import TCPConnectorMixIn, get_or_create_event_loop, IMPORT_EXCEPTION_NAMES
 
 # try to use drf encoder first
 try:
     from rest_framework.utils.encoders import JSONEncoder
 except Exception as _e:  # ImportError, django.core.exceptions.ImproperlyConfigured
-    if _e.__class__.__name__ in ['ImportError', 'ImproperlyConfigured']:
+    if _e.__class__.__name__ in IMPORT_EXCEPTION_NAMES:
         from json import JSONEncoder
     else:
         raise
@@ -34,7 +34,7 @@ try:
 
     DEV_SKIP_RETRIES = settings.DEBUG
 except Exception as _e:  # ImportError, django.core.exceptions.ImproperlyConfigured
-    if _e.__class__.__name__ in ['ImportError', 'ImproperlyConfigured']:
+    if _e.__class__.__name__ in IMPORT_EXCEPTION_NAMES:
         DEV_SKIP_RETRIES = bool(int(os.environ.get('DEV_SKIP_RETRIES', '0')) or 0)
     else:
         raise

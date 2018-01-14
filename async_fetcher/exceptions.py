@@ -1,6 +1,8 @@
 import typing as t
 import os
 
+from async_fetcher.utils import IMPORT_EXCEPTION_NAMES
+
 
 def fake_ugettext_lazy(raw_str: str):
     return raw_str
@@ -15,7 +17,7 @@ else:  # django package is not installed
 try:
     from rest_framework.exceptions import APIException
 except Exception as e:  # django.core.exceptions.ImproperlyConfigured
-    if e.__class__.__name__ in ('ImproperlyConfigured', 'ImportError'):
+    if e.__class__.__name__ in IMPORT_EXCEPTION_NAMES:
         class APIException(Exception):
             default_detail = _('API error occurred.')
             default_code = 'error'

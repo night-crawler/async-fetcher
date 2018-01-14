@@ -51,3 +51,5 @@ class TCPConnectorMixIn:
             connector = self.get_tcp_connector()
             not connector.closed and connector.close()
 
+
+IMPORT_EXCEPTION_NAMES = ['ImportError', 'ImproperlyConfigured', 'ModuleNotFoundError']
