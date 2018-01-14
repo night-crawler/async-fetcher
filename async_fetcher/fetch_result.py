@@ -14,40 +14,40 @@ class FetchResult:
         self._status = status
         self._result = result or {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<FetchResult: status={0.status}, headers={0.headers}, result={0.result}>'.format(self)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.is_success()
 
     __nonzero__ = __bool__
 
-    def __eq__(self, other: 'FetchResult'):
+    def __eq__(self, other: 'FetchResult') -> bool:
         return self.status == other.status and \
                self.headers == self.headers and \
                self.result == self.result
 
-    def is_jsonrpc(self):
+    def is_jsonrpc(self) -> bool:
         return isinstance(self._result, dict) and \
                'jsonrpc' in self._result
 
-    def is_success(self):
+    def is_success(self) -> bool:
         return 200 <= self.status <= 299
 
-    def is_client_error(self):
+    def is_client_error(self) -> bool:
         return 400 <= self.status <= 499
 
-    def is_informational(self):
+    def is_informational(self) -> bool:
         return 100 <= self.status <= 199
 
-    def is_redirect(self):
+    def is_redirect(self) -> bool:
         return 300 <= self.status <= 399
 
-    def is_server_error(self):
+    def is_server_error(self) -> bool:
         return 500 <= self.status <= 599
 
     @property
-    def status(self):
+    def status(self) -> int:
         if self.is_jsonrpc() and 'error' in self._result:
             return self._result['error']['code']
         return self._status

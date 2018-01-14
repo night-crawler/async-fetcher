@@ -72,6 +72,6 @@ class AsyncFetchNetworkError(AsyncFetchError):
             str(original_exception) or type(original_exception)
         ))
 
-    def get_template(self):
+    def get_template(self) -> str:
         return _('Network issue while requesting `{0}` service data from url `{1}` [{2} of {3} left]. '
                  'Last response code: {4}. Original exception: `{5}`.')
