@@ -1,3 +1,4 @@
 django
 djangorestframework
 furl
+aiohttp>=3.3.2

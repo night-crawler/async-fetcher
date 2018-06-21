@@ -11,3 +11,4 @@ dist/
 *.egg-info/
 .coverage
 annotations.json
+.pytest_cache

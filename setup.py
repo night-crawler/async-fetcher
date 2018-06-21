@@ -12,7 +12,7 @@ setup(
     license='MIT',
     author='night-crawler',
     author_email='lilo.panic@gmail.com',
-    description='aiohttp wrapper to handle multiple api calls at a time',
+    description='Tiny aiohttp wrapper for http request gathering in sync mode',
     long_description=long_description,
     classifiers=[
         'Environment :: Web Environment',
@@ -20,8 +20,9 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'License :: OSI Approved :: MIT License',
     ],
-    requires=['aiohttp', 'furl']
+    python_requires='>=3.6',
+    install_requires=['aiohttp>=3.3.2', 'furl']
 )

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 import pytest
@@ -54,27 +55,25 @@ class FetcherTest:
         tm = AsyncFetch.mk_task(url, language_code='lol', headers={'X-LOL': 666})
         assert tm['headers'] == {'X-LOL': 666, 'accept-language': 'lol'}
 
-    def test_fetch(self):
+    async def test_fetch(self):
         url = build_url('request-info')
         task_bundle = AsyncFetch.mk_task(url, data='lol')
+
         af = AsyncFetch({})
 
-        with af.get_client_session() as session:
-            task = af.fetch(session, task_bundle)
-            response = af.loop.run_until_complete(task)
-
+        async with af.get_client_session() as session:
+            response = await af.fetch(session, task_bundle)
             assert type(response) == FetchResult
             assert response.status == 200
             assert response.result['content'] == 'lol'
 
-    def test_fetch__do_not_wait_flag_return_empty_response(self):
+    async def test_fetch__do_not_wait_flag_return_empty_response(self):
         url = build_url('error_url')
         task_bundle = AsyncFetch.mk_task(url, data='lol', do_not_wait=True)
         af = AsyncFetch({})
 
-        with af.get_client_session() as session:
-            task = af.fetch(session, task_bundle)
-            response = af.loop.run_until_complete(task)
+        async with af.get_client_session() as session:
+            response = await af.fetch(session, task_bundle)
 
             assert type(response) == FetchResult
             assert response.status == 0
@@ -145,25 +144,23 @@ class FetcherTest:
         execution_time = f()
         assert execution_time < 2
 
-    def test_fetch_raises_network_error(self):
+    async def test_fetch_raises_network_error(self):
         url = build_url('502')
         task_bundle = AsyncFetch.mk_task(url)
         af = AsyncFetch({}, num_retries=2, timeout=1, retry_timeout=1)
 
         with pytest.raises(AsyncFetchNetworkError):
-            with af.get_client_session() as session:
-                task = af.fetch(session, task_bundle)
-                af.loop.run_until_complete(task)
+            async with af.get_client_session() as session:
+                await af.fetch(session, task_bundle)
 
-    def test_fetch_handles_timeout_error(self):
+    async def test_fetch_handles_timeout_error(self):
         url = build_url('sleep', '10')
         task_bundle = AsyncFetch.mk_task(url)
         af = AsyncFetch({}, num_retries=1, timeout=1, retry_timeout=1)
 
         try:
-            with af.get_client_session() as session:
-                task = af.fetch(session, task_bundle)
-                af.loop.run_until_complete(task)
+            async with af.get_client_session() as session:
+                await af.fetch(session, task_bundle)
         except Exception as e:
             assert isinstance(e, AsyncFetchNetworkError)
             assert isinstance(e.original_exception, TimeoutError)
