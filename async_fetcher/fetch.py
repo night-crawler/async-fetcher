@@ -247,7 +247,7 @@ class AsyncFetch(TCPConnectorMixIn):
 
         raise last_exception
 
-    async def _go(self) -> OrderedDict:
+    async def go_async(self) -> OrderedDict:
         """
         Executes stored task_map asynchronously.
         :return: HTTP Response OrderedDict
@@ -262,4 +262,4 @@ class AsyncFetch(TCPConnectorMixIn):
             raise self.receive_error_class(service_name=self.service_name, original_exception=e)
 
     def go(self):
-        return self.loop.run_until_complete(self._go())
+        return self.loop.run_until_complete(self.go_async())
