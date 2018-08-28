@@ -1,7 +1,7 @@
-from time import sleep
-
 import pytest
+
 import subprocess
+from time import sleep
 
 
 @pytest.fixture(scope="session", autouse=True)

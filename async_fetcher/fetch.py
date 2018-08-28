@@ -2,20 +2,21 @@ import asyncio
 import json
 import os
 import typing as t
-import aiohttp
-
+from asyncio import TimeoutError
 from collections import OrderedDict
+
+import aiohttp
+from aiohttp.client_exceptions import ClientOSError
+from aiohttp.formdata import FormData
 from furl import furl
 
-from aiohttp.client_exceptions import ClientOSError
-
-from asyncio import TimeoutError
-
-from aiohttp.formdata import FormData
-
-from async_fetcher.exceptions import AsyncFetchReceiveError, AsyncFetchNetworkError
+from async_fetcher.exceptions import (
+    AsyncFetchNetworkError, AsyncFetchReceiveError
+)
 from async_fetcher.fetch_result import FetchResult
-from async_fetcher.utils import TCPConnectorMixIn, get_or_create_event_loop, IMPORT_EXCEPTION_NAMES
+from async_fetcher.utils import (
+    IMPORT_EXCEPTION_NAMES, TCPConnectorMixIn, get_or_create_event_loop
+)
 
 # try to use drf encoder first
 try:

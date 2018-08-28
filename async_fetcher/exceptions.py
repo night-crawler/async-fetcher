@@ -1,5 +1,5 @@
-import typing as t
 import os
+import typing as t
 
 from async_fetcher.utils import IMPORT_EXCEPTION_NAMES
 

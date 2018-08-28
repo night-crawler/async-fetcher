@@ -1,7 +1,7 @@
-import ssl
-import aiohttp
 import asyncio
+import ssl
 
+import aiohttp
 
 # if sys.version_info >= (3, 5):
 #     EventLoopType = t.Union[asyncio.BaseEventLoop, asyncio.AbstractEventLoop]

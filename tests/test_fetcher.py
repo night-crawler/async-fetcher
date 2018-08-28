@@ -1,7 +1,8 @@
+import pytest
+
 import asyncio
 import os
 import time
-import pytest
 
 from async_fetcher.exceptions import AsyncFetchNetworkError
 from async_fetcher.fetch import AsyncFetch, FetchResult
