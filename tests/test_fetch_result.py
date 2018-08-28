@@ -31,7 +31,7 @@ def test_init():
 
 def test_repr():
     fr = FetchResult(status=200, result='result', headers={'header': 'test'})
-    assert fr.__repr__() == '<FetchResult: status=200, headers={\'header\': \'test\'}, result=result>'
+    assert fr.__repr__() == '<FetchResult: url=None status=200, headers={\'header\': \'test\'}, result=result>'
 
 
 def test_bool_expression():

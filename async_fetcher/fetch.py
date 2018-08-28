@@ -211,7 +211,7 @@ class AsyncFetch(TCPConnectorMixIn):
                 response = await session.request(method, url, timeout=timeout, **aio_bundle)
                 if do_not_wait:  # satisfied with any emptiness
                     await response.release()
-                    return FetchResult(result=None, headers=None, status=0)
+                    return FetchResult(url=url, result=None, headers=None, status=0)
 
                 # catch all network timeout status codes and retry
                 if response.status in [524, 504, 502, 408]:
@@ -229,7 +229,7 @@ class AsyncFetch(TCPConnectorMixIn):
                     gen = getattr(response, response_type)()
 
                 res = await gen
-                return FetchResult(result=res, headers=response.headers, status=response.status)
+                return FetchResult(url=url, result=res, headers=response.headers, status=response.status)
 
             except (TimeoutError, self.network_error_class, ClientOSError) as e:
                 last_exception = e
@@ -243,7 +243,7 @@ class AsyncFetch(TCPConnectorMixIn):
 
         # reraise last exception (timeout or network error)
         if fail_silently:
-            return FetchResult(result=None, headers=None, status=0)
+            return FetchResult(url=url, result=None, headers=None, status=0)
 
         raise last_exception
 

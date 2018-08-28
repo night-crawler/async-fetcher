@@ -9,13 +9,15 @@ class FetchResult:
     def __init__(self, 
                  headers: t.Optional[dict]=None, 
                  result: t.Optional[t.Any]=None,
-                 status: t.Optional[int]=None):
+                 status: t.Optional[int]=None,
+                 url: t.Optional[str]=None):
         self.headers = headers
         self._status = status
         self._result = result or {}
+        self._url = url
 
     def __repr__(self) -> str:
-        return '<FetchResult: status={0.status}, headers={0.headers}, result={0.result}>'.format(self)
+        return '<FetchResult: url={0.url} status={0.status}, headers={0.headers}, result={0.result}>'.format(self)
 
     def __bool__(self) -> bool:
         return self.is_success()
@@ -55,3 +57,7 @@ class FetchResult:
     @property
     def result(self):
         return self._result
+
+    @property
+    def url(self):
+        return self._url
