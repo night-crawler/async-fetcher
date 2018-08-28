@@ -80,6 +80,7 @@ class FetcherTest:
             assert response.status == 0
             assert response.result == {}
             assert response.headers is None
+            assert response.url == url
 
     def test_go(self):
         af = AsyncFetch({
@@ -91,6 +92,9 @@ class FetcherTest:
         assert responses['fail'].status == 404
         assert responses['first'].status == 200
         assert responses['second'].status == 200
+        assert responses['first'].url == build_url('request-info')
+        assert responses['second'].url == build_url('request-info')
+        assert responses['fail'].url == build_url('404')
 
     def test_external_tcp_connector_alive(self):
         # check `AsyncFetch._connector_owner` flag set properly
@@ -173,4 +177,4 @@ class FetcherTest:
         }
         af = AsyncFetch(task_map, num_retries=10, retry_timeout=0.2)
         res = af.go()
-        assert res[1] == FetchResult(None, None, 0)
+        assert res[1] == FetchResult(headers=None, result=None, status=0, url=build_url('502'))

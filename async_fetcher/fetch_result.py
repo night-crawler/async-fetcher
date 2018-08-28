@@ -26,8 +26,9 @@ class FetchResult:
 
     def __eq__(self, other: 'FetchResult') -> bool:
         return self.status == other.status and \
-               self.headers == self.headers and \
-               self.result == self.result
+               self.headers == other.headers and \
+               self.result == other.result and \
+               self.url == other.url
 
     def is_jsonrpc(self) -> bool:
         return isinstance(self._result, dict) and \

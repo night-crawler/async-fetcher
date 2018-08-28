@@ -70,3 +70,17 @@ def test_result_is_not_iterable():
 
     fr = FetchResult(status=200, result=())
     assert not fr.is_jsonrpc()
+
+
+def test_fetch_result_eq():
+    fr1 = FetchResult(status=200, result=1, url='1', headers={1: 2})
+
+    fr2 = FetchResult(status=200, result=1, url='1', headers={1: 3})
+    fr3 = FetchResult(status=200, result=1, url='2', headers={1: 2})
+    fr4 = FetchResult(status=200, result=2, url='1', headers={1: 2})
+    fr5 = FetchResult(status=201, result=1, url='1', headers={1: 2})
+
+    assert fr1 != fr2
+    assert fr1 != fr3
+    assert fr1 != fr4
+    assert fr1 != fr5
