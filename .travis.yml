@@ -6,18 +6,18 @@ sudo: false
 install:
   - pip install -r requirements/dev.txt
 
-before_install:
-  - pip install -U pip setuptools virtualenvwrapper
-  - source $(which virtualenvwrapper.sh)
-  - wipeenv
+#before_install:
+#  - pip install -U pip setuptools virtualenvwrapper
+#  - source $(which virtualenvwrapper.sh)
+#  - wipeenv
 
 script:
   - pip install django==$DJANGO
-  - pytest
+  - pytest --cov="async_fetcher"
 
 after_success:
   - pip install codecov
-  - codecov -e TEST_SUITE
+  - codecov
 
 after_failure:
   - dmesg | tail -n 100
@@ -28,11 +28,9 @@ matrix:
     - { python: "3.6", env: DJANGO=1.11 }
     - { python: "3.6", env: DJANGO=2.0 }
     - { python: "3.6", env: DJANGO=2.1 }
-    - { python: "3.6", env: DJANGO=master }
 
     - { python: "3.7", env: DJANGO=2.0 }
     - { python: "3.7", env: DJANGO=2.1 }
-    - { python: "3.7", env: DJANGO=master }
 
 
 notifications:

@@ -4,6 +4,24 @@ Installation
 .. image:: https://travis-ci.org/night-crawler/async-fetcher.svg?branch=master
     :target: https://travis-ci.org/night-crawler/async-fetcher
 
+.. image:: https://img.shields.io/pypi/v/async-fetcher.svg
+    :target: https://pypi.python.org/pypi/async-fetcher
+
+.. image:: https://img.shields.io/pypi/wheel/async-fetcher.svg
+    :alt: PyPI Wheel
+    :target: https://pypi.python.org/pypi/async-fetcher
+
+.. image:: https://requires.io/github/night-crawler/async-fetcher/requirements.svg?branch=feature%2Ftravis
+     :target: https://requires.io/github/night-crawler/async-fetcher/requirements/?branch=feature%2Ftravis
+     :alt: Requirements Status
+
+.. image:: https://img.shields.io/pypi/pyversions/async-fetcher.svg
+    :alt: Supported versions
+    :target: https://pypi.python.org/pypi/async-fetcher
+
+.. image:: https://img.shields.io/pypi/implementation/async-fetcher.svg
+    :alt: Supported implementations
+    :target: https://pypi.python.org/pypi/async-fetcher
 
 .. code:: bash
 
