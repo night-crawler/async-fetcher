@@ -12,7 +12,7 @@ install:
 #  - wipeenv
 
 script:
-  - pip install django==$DJANGO
+  - pip install django==$DJANGO aiohttp==$AIOHTTP
   - pytest --cov="async_fetcher"
 
 after_success:
