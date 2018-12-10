@@ -3,6 +3,11 @@ language: python
 cache: pip
 sudo: false
 
+before_install:
+  - pip install -U pip setuptools virtualenvwrapper
+  - source $(which virtualenvwrapper.sh)
+  - wipeenv
+
 script:
   - pip install -r ./requirements/dev.txt
   - pip install django==$DJANGO

@@ -1,5 +1,10 @@
 Installation
 ------------
+
+.. image:: https://travis-ci.org/night-crawler/async-fetcher.svg?branch=master
+    :target: https://travis-ci.org/night-crawler/async-fetcher
+
+
 .. code:: bash
 
     pip install async-fetcher
