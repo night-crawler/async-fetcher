@@ -1,6 +1,9 @@
 Installation
 ------------
 
+.. image:: https://codecov.io/gh/night-crawler/async-fetcher/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/night-crawler/async-fetcher
+
 .. image:: https://travis-ci.org/night-crawler/async-fetcher.svg?branch=master
     :target: https://travis-ci.org/night-crawler/async-fetcher
 
