@@ -1,6 +1,3 @@
-Installation
-------------
-
 .. image:: https://codecov.io/gh/night-crawler/async-fetcher/branch/master/graph/badge.svg
     :target: https://codecov.io/gh/night-crawler/async-fetcher
 
@@ -15,8 +12,8 @@ Installation
     :target: https://pypi.python.org/pypi/async-fetcher
 
 .. image:: https://requires.io/github/night-crawler/async-fetcher/requirements.svg?branch=master
-     :target: https://requires.io/github/night-crawler/async-fetcher/requirements/?branch=master
-     :alt: Requirements Status
+    :target: https://requires.io/github/night-crawler/async-fetcher/requirements/?branch=master
+    :alt: Requirements Status
 
 .. image:: https://img.shields.io/pypi/pyversions/async-fetcher.svg
     :alt: Supported versions
@@ -25,6 +22,9 @@ Installation
 .. image:: https://img.shields.io/pypi/implementation/async-fetcher.svg
     :alt: Supported implementations
     :target: https://pypi.python.org/pypi/async-fetcher
+
+Installation
+------------
 
 .. code:: bash
 
