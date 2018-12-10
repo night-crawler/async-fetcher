@@ -4,7 +4,7 @@ cache: pip
 sudo: false
 
 install:
-  - pip install --user -r requirements/dev.txt
+  - pip install -r requirements/dev.txt
 
 before_install:
   - pip install -U pip setuptools virtualenvwrapper
