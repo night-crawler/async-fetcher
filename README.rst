@@ -14,8 +14,8 @@ Installation
     :alt: PyPI Wheel
     :target: https://pypi.python.org/pypi/async-fetcher
 
-.. image:: https://requires.io/github/night-crawler/async-fetcher/requirements.svg?branch=feature%2Ftravis
-     :target: https://requires.io/github/night-crawler/async-fetcher/requirements/?branch=feature%2Ftravis
+.. image:: https://requires.io/github/night-crawler/async-fetcher/requirements.svg?branch=master
+     :target: https://requires.io/github/night-crawler/async-fetcher/requirements/?branch=master
      :alt: Requirements Status
 
 .. image:: https://img.shields.io/pypi/pyversions/async-fetcher.svg
