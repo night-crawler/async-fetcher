@@ -9,7 +9,7 @@ before_install:
   - wipeenv
 
 script:
-  - pip3 install ./requirements/dev.txt --no-build-isolation
+  - pip install -r ./requirements/dev.txt --no-build-isolation
   - pip install django==$DJANGO
   - pytest
 
